@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Cost Optimizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .card h2 {
+            color: #667eea;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .card-content {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            margin: 15px 0;
+        }
+
+        .card-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .cost-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .cost-item {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .cost-item-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .cost-item-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .details-section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-top: 30px;
+        }
+
+        .details-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        .status {
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .status.running {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.stopped {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.1em;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-bottom: 20px;
+            transition: background 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #764ba2;
+        }
+
+        .cpu-usage {
+            display: inline-block;
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: 600;
+        }
+
+        .empty-message {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>☁️ AWS Cost Optimizer</h1>
+            <p>Monitor your AWS resources and costs in real-time</p>
+        </div>
+
+        <!-- Dashboard Cards -->
+        <div class="dashboard">
+            <!-- Cost Card -->
+            <div class="card">
+                <h2>💰 Costs (Last 30 Days)</h2>
+                <div id="costs-content" class="loading">Loading...</div>
+            </div>
+
+            <!-- EC2 Instances Card -->
+            <div class="card">
+                <h2>🖥️ EC2 Instances</h2>
+                <div id="ec2-count" class="card-content">--</div>
+                <div class="card-label">Total running instances</div>
+            </div>
+
+            <!-- Security Card -->
+            <div class="card">
+                <h2>🔒 Security Resources</h2>
+                <div id="security-content" class="loading">Loading...</div>
+            </div>
+        </div>
+
+        <!-- EC2 Details Section -->
+        <div class="details-section">
+            <button class="refresh-btn" onclick="refreshData()">🔄 Refresh All Data</button>
+
+            <h2>EC2 Instances Details</h2>
+            <div id="ec2-details" class="loading">Loading EC2 instances...</div>
+        </div>
+
+        <!-- Security Details Section -->
+        <div class="details-section">
+            <h2>Security Groups</h2>
+            <div id="security-groups-details" class="loading">Loading security groups...</div>
+
+            <h2 style="margin-top: 30px;">Key Pairs</h2>
+            <div id="keypairs-details" class="loading">Loading key pairs...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080';
+
+        // Fetch and display costs
+        async function fetchCosts() {
+            try {
+                const response = await fetch(`${API_BASE}/cost`);
+                const data = await response.json();
+
+                let html = '<div class="cost-grid">';
+                html += `<div class="cost-item"><div class="cost-item-label">EC2</div><div class="cost-item-value">${data.EC2}</div></div>`;
+                html += `<div class="cost-item"><div class="cost-item-label">S3</div><div class="cost-item-value">${data.S3}</div></div>`;
+                html += `<div class="cost-item"><div class="cost-item-label">Lambda</div><div class="cost-item-value">${data.Lambda}</div></div>`;
+                html += `<div class="cost-item"><div class="cost-item-label">Total</div><div class="cost-item-value" style="grid-column: 1/-1;">${data.TOTAL}</div></div>`;
+                html += '</div>';
+
+                document.getElementById('costs-content').innerHTML = html;
+            } catch (error) {
+                console.error('Error fetching costs:', error);
+                document.getElementById('costs-content').innerHTML = `<div class="error">Error loading costs</div>`;
+            }
+        }
+
+        // Fetch and display EC2 instances
+        async function fetchEC2Instances() {
+            try {
+                const response = await fetch(`${API_BASE}/ec2`);
+                const data = await response.json();
+
+                document.getElementById('ec2-count').textContent = data.TotalCount;
+
+                let html = '';
+                if (!data.Instances || data.Instances.length === 0) {
+                    html = '<div class="empty-message">No instances found</div>';
+                } else {
+                    html = '<div class="table-container"><table>';
+                    html += '<tr><th>Instance ID</th><th>Type</th><th>State</th><th>CPU Usage</th><th>Launch Time</th></tr>';
+
+                    data.Instances.forEach(instance => {
+                        const statusClass = instance.State.toLowerCase() === 'running' ? 'running' : 'stopped';
+                        html += `<tr>
+                            <td>${instance.InstanceID}</td>
+                            <td>${instance.InstanceType}</td>
+                            <td><span class="status ${statusClass}">${instance.State}</span></td>
+                            <td><span class="cpu-usage">${instance.CPUUtilization}</span></td>
+                            <td>${instance.LaunchTime}</td>
+                        </tr>`;
+                    });
+
+                    html += '</table></div>';
+                }
+
+                document.getElementById('ec2-details').innerHTML = html;
+            } catch (error) {
+                console.error('Error fetching EC2 instances:', error);
+                document.getElementById('ec2-details').innerHTML = `<div class="error">Error loading EC2 instances</div>`;
+            }
+        }
+
+        // Fetch and display security details
+        async function fetchSecurityDetails() {
+            try {
+                const response = await fetch(`${API_BASE}/security-details`);
+                const data = await response.json();
+
+                // Update security card
+                let securityHtml = `
+                    <div style="margin: 15px 0;">
+                        <div style="font-size: 1.5em; font-weight: bold; color: #667eea;">${data.SecurityGroupsCount}</div>
+                        <div class="card-label">Security Groups</div>
+                    </div>
+                    <div style="border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px;">
+                        <div style="font-size: 1.5em; font-weight: bold; color: #667eea;">${data.KeyPairsCount}</div>
+                        <div class="card-label">Key Pairs</div>
+                    </div>
+                `;
+                document.getElementById('security-content').innerHTML = securityHtml;
+
+                // Display security groups details
+                let sgHtml = '';
+                if (!data.SecurityGroups || data.SecurityGroups.length === 0) {
+                    sgHtml = '<div class="empty-message">No security groups found</div>';
+                } else {
+                    sgHtml = '<div class="table-container"><table>';
+                    sgHtml += '<tr><th>Group ID</th><th>Group Name</th><th>Region</th><th>Description</th></tr>';
+
+                    data.SecurityGroups.forEach(sg => {
+                        sgHtml += `<tr>
+                            <td>${sg.GroupID}</td>
+                            <td>${sg.GroupName}</td>
+                            <td>${sg.Region}</td>
+                            <td>${sg.Description}</td>
+                        </tr>`;
+                    });
+
+                    sgHtml += '</table></div>';
+                }
+                document.getElementById('security-groups-details').innerHTML = sgHtml;
+
+                // Display key pairs details
+                let kpHtml = '';
+                if (!data.KeyPairs || data.KeyPairs.length === 0) {
+                    kpHtml = '<div class="empty-message">No key pairs found</div>';
+                } else {
+                    kpHtml = '<div class="table-container"><table>';
+                    kpHtml += '<tr><th>Key Name</th><th>Region</th></tr>';
+
+                    data.KeyPairs.forEach(kp => {
+                        kpHtml += `<tr>
+                            <td>${kp.KeyName}</td>
+                            <td>${kp.Region}</td>
+                        </tr>`;
+                    });
+
+                    kpHtml += '</table></div>';
+                }
+                document.getElementById('keypairs-details').innerHTML = kpHtml;
+            } catch (error) {
+                console.error('Error fetching security details:', error);
+                document.getElementById('security-content').innerHTML = `<div class="error">Error loading security details</div>`;
+                document.getElementById('security-groups-details').innerHTML = `<div class="error">Error loading security groups</div>`;
+                document.getElementById('keypairs-details').innerHTML = `<div class="error">Error loading key pairs</div>`;
+            }
+        }
+
+        // Refresh all data
+        function refreshData() {
+            document.getElementById('costs-content').innerHTML = '<div class="loading">Loading...</div>';
+            document.getElementById('ec2-details').innerHTML = '<div class="loading">Loading...</div>';
+            document.getElementById('security-content').innerHTML = '<div class="loading">Loading...</div>';
+            document.getElementById('security-groups-details').innerHTML = '<div class="loading">Loading...</div>';
+            document.getElementById('keypairs-details').innerHTML = '<div class="loading">Loading...</div>';
+
+            fetchCosts();
+            fetchEC2Instances();
+            fetchSecurityDetails();
+        }
+
+        // Load all data on page load
+        window.addEventListener('load', () => {
+            refreshData();
+            // Auto-refresh every 30 seconds
+            setInterval(refreshData, 30000);
+        });
+    </script>
+</body>
+</html>
