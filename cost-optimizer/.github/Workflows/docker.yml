@@ -32,3 +32,9 @@ jobs:
           context: .
           push: true
           tags: rikeshsingh/cost-optimiser:latest
+
+tags: |
+  rikeshsingh/cost-optimiser:latest
+  rikeshsingh/cost-optimiser:${{ github.sha }}
+
+ #this is push code to docker hub###############         
