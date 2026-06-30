@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  cost-optimizer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: yourhubusername/cost-optimizer:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - AWS_REGION
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
+    restart: unless-stopped
